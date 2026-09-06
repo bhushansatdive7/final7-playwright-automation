@@ -1,11 +1,22 @@
 {
   "name": "final7-playwright-automation",
   "version": "1.0.0",
-  "description": "",
+  "description": "End-to-end Playwright automation testing project for THE FINAL 7 web application.",
   "main": "index.js",
-  "scripts": {},
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium --workers=1",
+    "test:headed": "playwright test --project=chromium --headed --workers=1",
+    "report": "playwright show-report"
+  },
+  "keywords": [
+    "playwright",
+    "automation-testing",
+    "e2e-testing",
+    "javascript",
+    "qa"
+  ],
+  "author": "Bhushan Satdive",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
