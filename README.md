@@ -1,5 +1,6 @@
 # Final7 Playwright Automation
 [![Final7 Playwright Tests](https://github.com/bhushansatdive7/final7-playwright-automation/actions/workflows/playwright.yml/badge.svg)](https://github.com/bhushansatdive7/final7-playwright-automation/actions/workflows/playwright.yml)
+[![Final7 Playwright Tests](https://github.com/bhushansatdive7/final7-playwright-automation/actions/workflows/playwright.yml/badge.svg)](https://github.com/bhushansatdive7/final7-playwright-automation/actions/workflows/playwright.yml)
 
 End-to-end test automation project for **THE FINAL 7** web application using **Playwright** and **JavaScript**.
 
