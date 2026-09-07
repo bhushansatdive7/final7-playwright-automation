@@ -16,7 +16,7 @@ async function acceptRegistrationTerms(page) {
 
 
 // TC-003
-test.fixme('Verify new user can register successfully', async ({ page }) => {
+test ('Verify new user can register successfully', async ({ page }) => {
 
     await page.goto('/#/register');
 

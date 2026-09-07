@@ -1,65 +1,86 @@
 import { test, expect } from '@playwright/test';
 
-const UNPAID_EMAIL = process.env.FINAL7_UNPAID_EMAIL;
-const UNPAID_PASSWORD = process.env.FINAL7_UNPAID_PASSWORD;
+async function registerFreshUser(page) {
+
+    const testEmail = `final7payment${Date.now()}@gmail.com`;
+
+    await page.goto('/#/register');
+
+    await page
+        .getByRole('textbox', { name: 'Full name' })
+        .fill('Bhushan Payment Test');
+
+    await page
+        .getByRole('textbox', { name: 'Email' })
+        .fill(testEmail);
+
+    await page
+        .getByRole('textbox', { name: 'Password' })
+        .fill('Final7@Test123');
+
+    const checkboxes = page.getByRole('checkbox');
+
+    await expect(checkboxes).toHaveCount(3);
+
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+    await checkboxes.nth(2).check();
+
+    await page
+        .getByRole('button', {
+            name: 'CONTINUE TO SECURE ENTRY'
+        })
+        .click();
+
+    await expect(page).toHaveURL(
+        /#\/checkout$/,
+        { timeout: 15000 }
+    );
+}
 
 
 // TC-008
-test.fixme(
-    'Verify Razorpay payment gateway opens successfully',
-    async ({ page }) => {
+test('Verify PayU Secure Checkout opens successfully', async ({ page }) => {
 
-        await page.goto('/');
+    await registerFreshUser(page);
 
-        // Open Login
-        await page
-            .getByLabel('Main navigation')
-            .getByRole('link', { name: 'LOGIN' })
-            .click();
+    const selectAll = page.getByRole('checkbox', {
+        name: 'SELECT ALL'
+    });
 
-        // Login with unpaid participant account
-        await page
-            .getByRole('textbox', { name: 'Email' })
-            .fill(UNPAID_EMAIL);
+    await expect(selectAll).toBeVisible();
+    await selectAll.check();
 
-        await page
-            .getByRole('textbox', { name: 'Password' })
-            .fill(UNPAID_PASSWORD);
+    const mobileInput = page.getByRole('textbox', {
+        name: 'Mobile number for PayU'
+    });
 
-        await page
-            .getByRole('button', { name: 'SIGN IN' })
-            .click();
+    await expect(mobileInput).toBeVisible();
+    await mobileInput.fill('3258258792');
 
-        // Unpaid user should reach checkout
-        await expect(page).toHaveURL(
-            /#\/checkout$/,
-            { timeout: 15000 }
-        );
+    const paymentButton = page.getByRole('button', {
+        name: 'PAY ₹499 WITH PAYU'
+    });
 
-        // Accept checkout legal acknowledgements
-        const selectAll = page.getByRole('checkbox', {
-            name: 'SELECT ALL'
-        });
+    await expect(paymentButton).toBeVisible();
+    await expect(paymentButton).toBeEnabled();
 
-        await expect(selectAll).toBeVisible();
-        await selectAll.check();
+    await paymentButton.click();
 
-        // Payment button should become available
-        const paymentButton = page.getByRole('button', {
-            name: 'PAY ₹499 WITH RAZORPAY'
-        });
+    await expect(
+        page.getByText('Secure Checkout', { exact: true })
+    ).toBeVisible({
+        timeout: 15000
+    });
 
-        await expect(paymentButton).toBeVisible();
-        await expect(paymentButton).toBeEnabled();
+    await expect(
+        page.getByRole('heading', {
+            name: /Total Payable ₹499/i
+        })
+    ).toBeVisible();
 
-        // Open Razorpay checkout
-        await paymentButton.click();
+    await expect(
+        page.getByText(/Transaction Id:/i)
+    ).toBeVisible();
 
-        // Verify payment iframe appears
-        const paymentFrame = page.locator('iframe').first();
-
-        await expect(paymentFrame).toBeVisible({
-            timeout: 15000
-        });
-    }
-);
+});

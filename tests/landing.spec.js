@@ -1,14 +1,22 @@
 import { test, expect } from '@playwright/test';
 
-test('Verify ENTER link navigates user correctly', async ({ page }) => {
+test('Verify REGISTER NOW navigates user to registration page', async ({ page }) => {
 
     await page.goto('/');
 
-    const enterLink = page.getByRole('link', { name: 'ENTER ₹' });
+    const registerLink = page
+        .getByLabel('Main navigation')
+        .getByRole('link', {
+            name: 'REGISTER NOW',
+            exact: true
+        });
 
-    await expect(enterLink).toBeVisible();
+    await expect(registerLink).toBeVisible();
 
-    await enterLink.click();
-    await expect(page).toHaveURL('https://thefinal7.online/#/register');
+    await registerLink.click();
+
+    await expect(page).toHaveURL(
+        /#\/register$/
+    );
 
 });

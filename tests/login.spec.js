@@ -3,6 +3,12 @@ import { test, expect } from '@playwright/test';
 const QA_EMAIL = process.env.FINAL7_QA_EMAIL;
 const QA_PASSWORD = process.env.FINAL7_QA_PASSWORD;
 
+if (!QA_EMAIL || !QA_PASSWORD) {
+    throw new Error(
+        'Missing FINAL7_QA_EMAIL or FINAL7_QA_PASSWORD environment variables.'
+    );
+}
+
 
 // TC-005
 test('Verify existing user can login successfully', async ({ page }) => {

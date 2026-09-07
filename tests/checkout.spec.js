@@ -1,60 +1,76 @@
 import { test, expect } from '@playwright/test';
 
-const UNPAID_EMAIL = process.env.FINAL7_UNPAID_EMAIL;
-const UNPAID_PASSWORD = process.env.FINAL7_UNPAID_PASSWORD;
+async function registerFreshUser(page) {
+
+    const testEmail = `final7checkout${Date.now()}@gmail.com`;
+
+    await page.goto('/#/register');
+
+    await page
+        .getByRole('textbox', { name: 'Full name' })
+        .fill('Bhushan Checkout Test');
+
+    await page
+        .getByRole('textbox', { name: 'Email' })
+        .fill(testEmail);
+
+    await page
+        .getByRole('textbox', { name: 'Password' })
+        .fill('Final7@Test123');
+
+    const checkboxes = page.getByRole('checkbox');
+
+    await expect(checkboxes).toHaveCount(3);
+
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+    await checkboxes.nth(2).check();
+
+    await page
+        .getByRole('button', {
+            name: 'CONTINUE TO SECURE ENTRY'
+        })
+        .click();
+
+    await expect(page).toHaveURL(
+        /#\/checkout$/,
+        { timeout: 15000 }
+    );
+}
 
 
 // TC-007
-test.fixme(
-    'Verify checkout page displays correct payment details',
-    async ({ page }) => {
+test('Verify checkout page displays correct PayU payment details', async ({ page }) => {
 
-        await page.goto('/');
+    await registerFreshUser(page);
 
-        // Open Login
-        await page
-            .getByLabel('Main navigation')
-            .getByRole('link', { name: 'LOGIN' })
-            .click();
+    const totalPayable = page
+        .getByText('Total payable', { exact: true })
+        .locator('..');
 
-        // Login with an unpaid participant account
-        await page
-            .getByRole('textbox', { name: 'Email' })
-            .fill(UNPAID_EMAIL);
+    await expect(
+        totalPayable.getByText('₹499', { exact: true })
+    ).toBeVisible();
 
-        await page
-            .getByRole('textbox', { name: 'Password' })
-            .fill(UNPAID_PASSWORD);
+    const selectAll = page.getByRole('checkbox', {
+        name: 'SELECT ALL'
+    });
 
-        await page
-            .getByRole('button', { name: 'SIGN IN' })
-            .click();
+    await expect(selectAll).toBeVisible();
+    await selectAll.check();
 
-        // Unpaid participant should reach checkout
-        await expect(page).toHaveURL(
-            /#\/checkout$/,
-            { timeout: 15000 }
-        );
+    const mobileInput = page.getByRole('textbox', {
+        name: 'Mobile number for PayU'
+    });
 
-        // Verify participation fee
-        await expect(
-            page.getByText('₹499', { exact: true })
-        ).toBeVisible();
+    await expect(mobileInput).toBeVisible();
+    await mobileInput.fill('3258258792');
 
-        // Verify legal acknowledgement control
-        const selectAll = page.getByRole('checkbox', {
-            name: 'SELECT ALL'
-        });
+    const paymentButton = page.getByRole('button', {
+        name: 'PAY ₹499 WITH PAYU'
+    });
 
-        await expect(selectAll).toBeVisible();
+    await expect(paymentButton).toBeVisible();
+    await expect(paymentButton).toBeEnabled();
 
-        // Before accepting legal terms,
-        // payment should not be available
-        await expect(
-            page.getByRole('button', {
-                name: /ACCEPT ALL TERMS|COMPLETE REQUIRED DISCLOSURES/i
-            })
-        ).toBeDisabled();
-
-    }
-);
+});

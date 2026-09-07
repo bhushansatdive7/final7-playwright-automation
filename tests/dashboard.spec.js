@@ -3,6 +3,12 @@ import { test, expect } from '@playwright/test';
 const QA_EMAIL = process.env.FINAL7_QA_EMAIL;
 const QA_PASSWORD = process.env.FINAL7_QA_PASSWORD;
 
+if (!QA_EMAIL || !QA_PASSWORD) {
+    throw new Error(
+        'Missing FINAL7_QA_EMAIL or FINAL7_QA_PASSWORD environment variables.'
+    );
+}
+
 
 // Reusable login helper
 async function loginPaidUser(page) {
@@ -176,7 +182,7 @@ test(
         // Another payment opportunity must not appear
         await expect(
             page.getByRole('button', {
-                name: 'PAY ₹499 WITH RAZORPAY'
+                name: 'PAY ₹499 WITH PAYU'
             })
         ).not.toBeVisible();
 
