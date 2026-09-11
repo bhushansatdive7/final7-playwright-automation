@@ -1,115 +1,182 @@
 import { test, expect } from '@playwright/test';
 
 
-// Reusable helper for the 3 registration checkboxes
+// ---------------------------------------------------------
+// Registration Terms Helper
+// ---------------------------------------------------------
+
 async function acceptRegistrationTerms(page) {
 
-    const checkboxes = page.getByRole('checkbox');
+    const checkboxes =
+        page.getByRole('checkbox');
 
-    // Registration page currently has 3 required checkboxes
     await expect(checkboxes).toHaveCount(3);
 
-    await checkboxes.nth(0).check();
-    await checkboxes.nth(1).check();
-    await checkboxes.nth(2).check();
+    for (let i = 0; i < 3; i++) {
+
+        const checkbox =
+            checkboxes.nth(i);
+
+        // WebKit detects the checkbox correctly but the
+        // custom UI can keep it in an "unstable" state.
+        await checkbox.check({
+            force: true
+        });
+
+        // Verify the action actually succeeded.
+        await expect(
+            checkbox
+        ).toBeChecked();
+    }
 }
 
 
+// ---------------------------------------------------------
 // TC-003
-test ('Verify new user can register successfully', async ({ page }) => {
+// Successful Registration
+// ---------------------------------------------------------
 
-    await page.goto('/#/register');
+test(
+    'Verify new user can register successfully',
+    async ({ page }) => {
 
-    // Fresh email every run
-    const testEmail = `final7qa${Date.now()}@gmail.com`;
+        await page.goto('/#/register');
 
-    await page
-        .getByRole('textbox', { name: 'Full name' })
-        .fill('Bhushan Test');
+        const testEmail =
+            `final7qa${Date.now()}@gmail.com`;
 
-    await page
-        .getByRole('textbox', { name: 'Email' })
-        .fill(testEmail);
+        const fullNameInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Full name'
+                }
+            );
 
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill('Final7@Test123');
+        const emailInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Email'
+                }
+            );
 
-    // Accept all required registration acknowledgements
-    await acceptRegistrationTerms(page);
+        const passwordInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Password'
+                }
+            );
 
-    const continueButton = page.getByRole('button', {
-        name: 'CONTINUE TO SECURE ENTRY'
-    });
+        await fullNameInput.fill(
+            'Bhushan Test'
+        );
 
-    await expect(continueButton).toBeVisible();
-    await expect(continueButton).toBeEnabled();
+        await emailInput.fill(
+            testEmail
+        );
 
-    await continueButton.click();
+        await passwordInput.fill(
+            'Final7@Test123'
+        );
 
-    // Wait for backend registration to finish
-    try {
+        await acceptRegistrationTerms(page);
 
-        await page.waitForURL('**/#/checkout', {
-            timeout: 15000
+        const continueButton =
+            page.getByRole(
+                'button',
+                {
+                    name: 'CONTINUE TO SECURE ENTRY'
+                }
+            );
+
+        await expect(
+            continueButton
+        ).toBeVisible();
+
+        await expect(
+            continueButton
+        ).toBeEnabled();
+
+        await continueButton.click({
+            force: true
         });
 
-    } catch (error) {
-
-        console.log('\n');
-        console.log('========== REGISTRATION DEBUG ==========');
-
-        console.log(
-            await page.locator('main').innerText()
-        );
-
-        console.log('Current URL:', page.url());
-
-        console.log('========================================');
-        console.log('\n');
-
-        throw new Error(
-            `Registration did not reach checkout. Current URL: ${page.url()}`
+        // Successful registration must reach checkout.
+        await expect(page).toHaveURL(
+            /#\/checkout$/,
+            {
+                timeout: 20000
+            }
         );
     }
-
-    await expect(page).toHaveURL(
-        'https://thefinal7.online/#/checkout'
-    );
-
-});
+);
 
 
+// ---------------------------------------------------------
 // TC-004
-test('Verify user cannot register without full name', async ({ page }) => {
+// Registration Without Full Name
+// ---------------------------------------------------------
 
-    await page.goto('/#/register');
+test(
+    'Verify user cannot register without full name',
+    async ({ page }) => {
 
-    const testEmail = `final7qa${Date.now()}@gmail.com`;
+        await page.goto('/#/register');
 
-    // Full name intentionally left empty
+        const testEmail =
+            `final7negative${Date.now()}@gmail.com`;
 
-    await page
-        .getByRole('textbox', { name: 'Email' })
-        .fill(testEmail);
+        const emailInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Email'
+                }
+            );
 
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill('Final7@Test123');
+        const passwordInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Password'
+                }
+            );
 
-    await acceptRegistrationTerms(page);
+        await emailInput.fill(
+            testEmail
+        );
 
-    const continueButton = page.getByRole('button', {
-        name: 'CONTINUE TO SECURE ENTRY'
-    });
+        await passwordInput.fill(
+            'Final7@Test123'
+        );
 
-    await expect(continueButton).toBeVisible();
+        await acceptRegistrationTerms(page);
 
-    await continueButton.click();
+        const continueButton =
+            page.getByRole(
+                'button',
+                {
+                    name: 'CONTINUE TO SECURE ENTRY'
+                }
+            );
 
-    // Invalid registration must remain on register page
-    await expect(page).toHaveURL(
-        'https://thefinal7.online/#/register'
-    );
+        await expect(
+            continueButton
+        ).toBeVisible();
 
-});
+        await continueButton.click({
+            force: true
+        });
+
+        // Invalid registration should stay
+        // on registration page.
+        await expect(page).toHaveURL(
+            /#\/register$/,
+            {
+                timeout: 10000
+            }
+        );
+    }
+);

@@ -3,7 +3,15 @@ import 'dotenv/config';
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+
   testDir: './tests',
+
+  // Give production E2E flows more realistic time
+  timeout: 60000,
+
+  expect: {
+    timeout: 15000
+  },
 
   fullyParallel: true,
 
@@ -16,26 +24,44 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
+
     baseURL: 'https://thefinal7.online',
+
     trace: 'on-first-retry',
+
     screenshot: 'only-on-failure',
+
     video: 'retain-on-failure',
+
+    // Important for WebKit/Safari-style animation instability
+    reducedMotion: 'reduce',
+
+    actionTimeout: 15000,
+
+    navigationTimeout: 30000
   },
 
   projects: [
+
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome']
+      }
     },
 
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox']
+      }
     },
 
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-  ],
+      use: {
+        ...devices['Desktop Safari']
+      }
+    }
+  ]
 });

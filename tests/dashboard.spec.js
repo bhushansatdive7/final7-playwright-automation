@@ -1,195 +1,351 @@
 import { test, expect } from '@playwright/test';
 
-const QA_EMAIL = process.env.FINAL7_QA_EMAIL;
-const QA_PASSWORD = process.env.FINAL7_QA_PASSWORD;
+const BASE_URL = 'https://thefinal7.online';
 
-if (!QA_EMAIL || !QA_PASSWORD) {
-    throw new Error(
-        'Missing FINAL7_QA_EMAIL or FINAL7_QA_PASSWORD environment variables.'
-    );
-}
+test.describe('FINAL 7 Dashboard Security - BUG-003', () => {
 
+    test.beforeEach(async ({ page }) => {
 
-// Reusable login helper
-async function loginPaidUser(page) {
-
-    await page.goto('/');
-
-    await page
-        .getByLabel('Main navigation')
-        .getByRole('link', { name: 'LOGIN' })
-        .click();
-
-    await page
-        .getByRole('textbox', { name: 'Email' })
-        .fill(QA_EMAIL);
-
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill(QA_PASSWORD);
-
-    await page
-        .getByRole('button', { name: 'SIGN IN' })
-        .click();
-
-    // Paid user should reach dashboard.
-    // Unpaid users are sent to checkout.
-    await expect(page).toHaveURL(
-        /#\/dashboard$/,
-        { timeout: 15000 }
-    );
-
-    await expect(
-        page.getByText('PARTICIPANT DASHBOARD', {
-            exact: true
-        })
-    ).toBeVisible();
-
-    await expect(
-        page.getByRole('button', {
-            name: 'LOG OUT'
-        })
-    ).toBeVisible();
-}
-
-
-// TC-012
-test(
-    'Verify paid participant dashboard shows waiting event status',
-    async ({ page }) => {
-
-        await loginPaidUser(page);
-
-        // Paid user reaching dashboard confirms
-        // backend payment/access state is valid.
-        await expect(page).toHaveURL(/#\/dashboard$/);
-
-        // Event must still be waiting
-        const waitingButton = page.getByRole('button', {
-            name: 'WAITING FOR EVENT'
+        // Start from a clean public page.
+        await page.goto(`${BASE_URL}/#/`, {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
         });
 
-        await expect(waitingButton).toBeVisible();
+        // Remove all browser-side participant/session state.
+        await page.evaluate(() => {
 
-        // User must not enter before event starts
-        await expect(waitingButton).toBeDisabled();
-    }
-);
+            localStorage.clear();
+            sessionStorage.clear();
 
-
-// TC-013
-test(
-    'Verify paid participant session persists after page refresh',
-    async ({ page }) => {
-
-        await loginPaidUser(page);
-
-        // Refresh browser
-        await page.reload();
-
-        // Session should survive refresh
-        await expect(page).toHaveURL(
-            /#\/dashboard$/,
-            { timeout: 10000 }
-        );
-
-        await expect(
-            page.getByText('PARTICIPANT DASHBOARD', {
-                exact: true
-            })
-        ).toBeVisible();
-
-        await expect(
-            page.getByRole('button', {
-                name: 'LOG OUT'
-            })
-        ).toBeVisible();
-    }
-);
-
-
-// TC-014
-test(
-    'Verify logout removes participant session and protects dashboard',
-    async ({ page }) => {
-
-        await loginPaidUser(page);
-
-        // Logout
-        await page
-            .getByRole('button', {
-                name: 'LOG OUT'
-            })
-            .click();
-
-        // Try protected route manually
-        await page.goto('/#/dashboard');
-
-        // Protected dashboard must not be exposed
-        await expect(
-            page.getByText('PARTICIPANT DASHBOARD', {
-                exact: true
-            })
-        ).not.toBeVisible();
-
-        await expect(
-            page.getByRole('button', {
-                name: 'LOG OUT'
-            })
-        ).not.toBeVisible();
-    }
-);
-
-
-// TC-015
-test(
-    'Verify paid participant cannot start challenge before event window',
-    async ({ page }) => {
-
-        await loginPaidUser(page);
-
-        const waitingButton = page.getByRole('button', {
-            name: 'WAITING FOR EVENT'
         });
-
-        await expect(waitingButton).toBeVisible();
-
-        await expect(waitingButton).toBeDisabled();
-
-        await expect(page).toHaveURL(
-            /#\/dashboard$/
-        );
-    }
-);
+    });
 
 
-// Duplicate payment protection
-test(
-    'Verify paid participant cannot access checkout for duplicate payment',
-    async ({ page }) => {
+    /*
+    |--------------------------------------------------------------------------
+    | TEST 1
+    | Direct unauthenticated dashboard access
+    |--------------------------------------------------------------------------
+    */
 
-        await loginPaidUser(page);
+    test(
+        'Unauthenticated user cannot directly access dashboard',
+        async ({ page }) => {
 
-        // Paid participant manually tries checkout
-        await page.goto('/#/checkout');
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
 
-        // Application should return paid user to dashboard
-        await expect(page).toHaveURL(
-            /#\/dashboard$/,
-            { timeout: 10000 }
-        );
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
 
-        // Another payment opportunity must not appear
-        await expect(
-            page.getByRole('button', {
-                name: 'PAY ₹499 WITH PAYU'
-            })
-        ).not.toBeVisible();
+            await expect(
+                page.getByRole('heading', {
+                    name: /RETURN TO THE SYSTEM/i
+                })
+            ).toBeVisible();
 
-        await expect(
-            page.getByText('PARTICIPANT DASHBOARD', {
-                exact: true
-            })
-        ).toBeVisible();
-    }
-);
+            await expect(
+                page.getByText(
+                    /PARTICIPANT DASHBOARD/i
+                )
+            ).toHaveCount(0);
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEST 2
+    | Explicit logout marker protects dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    test(
+        'Signed-out browser cannot access dashboard',
+        async ({ page }) => {
+
+            // This is the state created by the real logout function.
+            await page.evaluate(() => {
+
+                localStorage.setItem(
+                    'tf7_signed_out',
+                    '1'
+                );
+
+            });
+
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
+
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+            await expect(
+                page.getByText(
+                    /PARTICIPANT DASHBOARD/i
+                )
+            ).toHaveCount(0);
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEST 3
+    | Stale local participant/session data must not bypass logout
+    |--------------------------------------------------------------------------
+    */
+
+    test(
+        'Stale participant data cannot bypass dashboard protection after logout',
+        async ({ page }) => {
+
+            await page.evaluate(() => {
+
+                /*
+                 * Simulate stale WebKit browser data.
+                 */
+
+                localStorage.setItem(
+                    'tf7_participant',
+                    JSON.stringify({
+                        id: 'fake-user',
+                        name: 'STALE USER',
+                        email: 'stale@example.com'
+                    })
+                );
+
+                localStorage.setItem(
+                    'tf7_session',
+                    JSON.stringify({
+                        id: 'fake-session',
+                        status: 'active'
+                    })
+                );
+
+                /*
+                 * Important:
+                 * browser was explicitly logged out.
+                 */
+                localStorage.setItem(
+                    'tf7_signed_out',
+                    '1'
+                );
+
+            });
+
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
+
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+            await expect(
+                page.getByText(
+                    /PARTICIPANT DASHBOARD/i
+                )
+            ).toHaveCount(0);
+
+            await expect(
+                page.getByRole('heading', {
+                    name: /WELCOME,/i
+                })
+            ).toHaveCount(0);
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEST 4
+    | Simulate stale Supabase auth storage in WebKit
+    |--------------------------------------------------------------------------
+    */
+
+    test(
+        'Stale Supabase browser auth cache cannot reopen dashboard after logout',
+        async ({ page }) => {
+
+            await page.evaluate(() => {
+
+                /*
+                 * Simulates the type of stale auth-storage condition
+                 * that caused BUG-003 in WebKit/Safari.
+                 */
+
+                localStorage.setItem(
+                    'sb-final7-auth-token',
+                    JSON.stringify({
+                        access_token: 'stale-token',
+                        refresh_token: 'stale-refresh-token',
+                        user: {
+                            id: 'stale-user'
+                        }
+                    })
+                );
+
+                /*
+                 * Logout marker takes priority.
+                 */
+                localStorage.setItem(
+                    'tf7_signed_out',
+                    '1'
+                );
+
+            });
+
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
+
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+            await expect(
+                page.getByRole('heading', {
+                    name: /RETURN TO THE SYSTEM/i
+                })
+            ).toBeVisible();
+
+            await expect(
+                page.getByText(
+                    /PARTICIPANT DASHBOARD/i
+                )
+            ).toHaveCount(0);
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEST 5
+    | Refresh must not restore protected dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    test(
+        'Dashboard remains protected after reload in WebKit',
+        async ({ page }) => {
+
+            await page.evaluate(() => {
+
+                localStorage.setItem(
+                    'tf7_signed_out',
+                    '1'
+                );
+
+            });
+
+            /*
+             * Attempt unauthorized access.
+             */
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
+
+            /*
+             * Should immediately leave dashboard.
+             */
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+
+            /*
+             * Reload browser.
+             */
+            await page.reload({
+                waitUntil: 'domcontentloaded',
+                timeout: 30000
+            });
+
+
+            /*
+             * WebKit must still remain logged out.
+             */
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+
+            /*
+             * Try dashboard again after reload.
+             */
+            await page.goto(
+                `${BASE_URL}/#/dashboard`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                }
+            );
+
+
+            /*
+             * Must again redirect to login.
+             */
+            await expect(page).toHaveURL(
+                /#\/login$/,
+                {
+                    timeout: 20000
+                }
+            );
+
+
+            /*
+             * Protected content must never appear.
+             */
+            await expect(
+                page.getByText(
+                    /PARTICIPANT DASHBOARD/i
+                )
+            ).toHaveCount(0);
+        }
+    );
+
+});

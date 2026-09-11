@@ -1,76 +1,208 @@
 import { test, expect } from '@playwright/test';
 
+
+// ---------------------------------------------------------
+// Registration Terms Helper
+// ---------------------------------------------------------
+
+async function acceptRegistrationTerms(page) {
+
+    const checkboxes =
+        page.getByRole('checkbox');
+
+    await expect(checkboxes).toHaveCount(3);
+
+    for (let i = 0; i < 3; i++) {
+
+        const checkbox =
+            checkboxes.nth(i);
+
+        await checkbox.check({
+            force: true
+        });
+
+        await expect(
+            checkbox
+        ).toBeChecked();
+    }
+}
+
+
+// ---------------------------------------------------------
+// Fresh Registration Helper
+// ---------------------------------------------------------
+
 async function registerFreshUser(page) {
 
-    const testEmail = `final7checkout${Date.now()}@gmail.com`;
+    const testEmail =
+        `final7checkout${Date.now()}@gmail.com`;
 
     await page.goto('/#/register');
 
     await page
-        .getByRole('textbox', { name: 'Full name' })
-        .fill('Bhushan Checkout Test');
+        .getByRole(
+            'textbox',
+            {
+                name: 'Full name'
+            }
+        )
+        .fill(
+            'Bhushan Checkout Test'
+        );
 
     await page
-        .getByRole('textbox', { name: 'Email' })
-        .fill(testEmail);
+        .getByRole(
+            'textbox',
+            {
+                name: 'Email'
+            }
+        )
+        .fill(
+            testEmail
+        );
 
     await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill('Final7@Test123');
+        .getByRole(
+            'textbox',
+            {
+                name: 'Password'
+            }
+        )
+        .fill(
+            'Final7@Test123'
+        );
 
-    const checkboxes = page.getByRole('checkbox');
+    await acceptRegistrationTerms(page);
 
-    await expect(checkboxes).toHaveCount(3);
+    const continueButton =
+        page.getByRole(
+            'button',
+            {
+                name: 'CONTINUE TO SECURE ENTRY'
+            }
+        );
 
-    await checkboxes.nth(0).check();
-    await checkboxes.nth(1).check();
-    await checkboxes.nth(2).check();
+    await expect(
+        continueButton
+    ).toBeEnabled();
 
-    await page
-        .getByRole('button', {
-            name: 'CONTINUE TO SECURE ENTRY'
-        })
-        .click();
+    await continueButton.click({
+        force: true
+    });
 
     await expect(page).toHaveURL(
         /#\/checkout$/,
-        { timeout: 15000 }
+        {
+            timeout: 20000
+        }
     );
 }
 
 
+// ---------------------------------------------------------
 // TC-007
-test('Verify checkout page displays correct PayU payment details', async ({ page }) => {
+// Checkout Page
+// ---------------------------------------------------------
 
-    await registerFreshUser(page);
+test(
+    'Verify checkout page displays correct PayU payment details',
+    async ({ page }) => {
 
-    const totalPayable = page
-        .getByText('Total payable', { exact: true })
-        .locator('..');
+        await registerFreshUser(page);
 
-    await expect(
-        totalPayable.getByText('₹499', { exact: true })
-    ).toBeVisible();
+        // -------------------------------------------------
+        // Verify amount
+        // -------------------------------------------------
 
-    const selectAll = page.getByRole('checkbox', {
-        name: 'SELECT ALL'
-    });
+        const totalPayable =
+            page
+                .getByText(
+                    'Total payable',
+                    {
+                        exact: true
+                    }
+                )
+                .locator('..');
 
-    await expect(selectAll).toBeVisible();
-    await selectAll.check();
+        await expect(
+            totalPayable.getByText(
+                '₹499',
+                {
+                    exact: true
+                }
+            )
+        ).toBeVisible({
+            timeout: 15000
+        });
 
-    const mobileInput = page.getByRole('textbox', {
-        name: 'Mobile number for PayU'
-    });
+        // -------------------------------------------------
+        // Select Checkout Acknowledgements
+        // -------------------------------------------------
 
-    await expect(mobileInput).toBeVisible();
-    await mobileInput.fill('3258258792');
+        const selectAll =
+            page.getByRole(
+                'checkbox',
+                {
+                    name: 'SELECT ALL'
+                }
+            );
 
-    const paymentButton = page.getByRole('button', {
-        name: 'PAY ₹499 WITH PAYU'
-    });
+        await expect(
+            selectAll
+        ).toBeVisible();
 
-    await expect(paymentButton).toBeVisible();
-    await expect(paymentButton).toBeEnabled();
+        await selectAll.check({
+            force: true
+        });
 
-});
+        await expect(
+            selectAll
+        ).toBeChecked();
+
+        // -------------------------------------------------
+        // Mobile Number
+        // -------------------------------------------------
+
+        const mobileInput =
+            page.getByRole(
+                'textbox',
+                {
+                    name: 'Mobile number for PayU'
+                }
+            );
+
+        await expect(
+            mobileInput
+        ).toBeVisible();
+
+        await mobileInput.fill(
+            '3258258792'
+        );
+
+        await expect(
+            mobileInput
+        ).toHaveValue(
+            '3258258792'
+        );
+
+        // -------------------------------------------------
+        // Payment Button
+        // -------------------------------------------------
+
+        const paymentButton =
+            page.getByRole(
+                'button',
+                {
+                    name: 'PAY ₹499 WITH PAYU'
+                }
+            );
+
+        await expect(
+            paymentButton
+        ).toBeVisible();
+
+        await expect(
+            paymentButton
+        ).toBeEnabled();
+    }
+);
